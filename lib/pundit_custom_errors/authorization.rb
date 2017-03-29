@@ -4,15 +4,17 @@ module PunditCustomErrors
   # displaying the given error message instead of a default error message.
   module Authorization
     def authorize(record, query = nil)
+      query ||= params[:action].to_s + '?'
+
       @_pundit_policy_authorized = true
 
-      query ||= params[:action].to_s + '?'
       policy = policy(record)
+
       unless policy.public_send(query)
-        fail generate_error_for(policy, query, record)
+        generate_error_for(policy, query, record)
       end
 
-      true
+      record
     end
 
     protected
@@ -26,10 +28,7 @@ module PunditCustomErrors
       message ||= translate_error_message_for_query(query, policy)
       message ||= "not allowed to #{query} this #{record}"
 
-      error = Pundit::NotAuthorizedError.new(message)
-
-      error.query, error.record, error.policy = query, record, policy
-      error
+      raise Pundit::NotAuthorizedError, message: message, query: query, record: record, policy: policy
     end
 
     def translate_error_message_for_query(query, policy)
